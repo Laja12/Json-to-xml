@@ -1,0 +1,104 @@
+name: data-transfer
+
+on:
+  workflow_dispatch:
+  # push:
+  #   branches:
+  #     - main
+  # pull_request:
+  #   branches:
+  #     - main
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: write
+      # pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: arn:aws:iam::838365449755:role/open-id-connect
+          aws-region: us-east-1  
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v1
+        with:
+          terraform_version: 1.0.0 
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v1
+        with:
+          terraform_version: 1.0.0 
+          
+      - name: Install TFLint
+        run: |
+          curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
+
+      # - name: Render terraform docs and push changes back to PR
+      #   uses: terraform-docs/gh-actions@main
+      #   with:
+      #     working-dir: ./modules
+      #     output-file: README.md
+      #     output-method: inject
+      #     git-push: "true"
+          
+      - name: Terraform format
+        run: terraform fmt
+ 
+      - name: Terraform Lint
+        run: tflint
+
+      - name: Install Checkov
+        run: pip install checkov
+
+      - name: Run Checkov with soft fail
+        run: checkov --directory . --soft-fail
+
+      - name: Initialize Terraform
+        run: terraform init
+
+      - name: Terraform test
+        run: |
+         terraform test
+        continue-on-error: true
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      # - name: Generate Terraform Docs (README.md)
+      #   if: github.event_name == 'push' || github.event_name == 'pull_request'
+      #   uses: terraform-docs/gh-actions@v1.3.0
+      #   with:
+      #     working-dir: .
+      #     output-file: README.md
+      #     output-method: inject
+      #     git-push: true
+      #     config-file: .terraform-docs.yml
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # - name: Configure Git
+      #   run: |
+      #     git config --global user.name 'github-actions[bot]'
+      #     git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+      # - name: Post Terraform Docs as PR Comment
+      #   if: github.event_name == 'pull_request'
+      #   uses: marocchino/sticky-pull-request-comment@v2.9.0
+      #   with:
+      #     working-dir: .
+      #     github_token: ${{ secrets.GITHUB_TOKEN }}
+      #     header: "Terraform Documentation"
+      #     path: ./README.md
+
+
+      - name: Apply Terraform plan
+        run: terraform apply -auto-approve
