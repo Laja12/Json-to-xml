@@ -10,7 +10,7 @@ provider "aws" {
   region = var.aws_region
 }
 module "s3_bucket" {
-  source      = "./modules/s3_bucket"
+  source      = "./modules/s3"
   bucket_name = "json-to-xml-bucket-example"
 }
 
